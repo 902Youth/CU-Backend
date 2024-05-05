@@ -1,7 +1,9 @@
-from flask import Flask
+from flask import Flask, Blueprint
+from controllers.users import users
 
 # Create a Flask application
 app = Flask(__name__)
+app.register_blueprint(users, url_prefix='/users')
 
 # Define a route for the root URL
 @app.route('/')
