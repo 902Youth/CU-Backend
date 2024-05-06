@@ -16,3 +16,7 @@ class User(db.Model):
         self.lastname = lastname
         self.username = username
         self.hash = hash
+
+    # Returns a dictionary representation of the User (used for JSON serialization)
+    def _asdict(self):
+        return {c.name: str(getattr(self, c.name)) for c in self.__table__.columns}
