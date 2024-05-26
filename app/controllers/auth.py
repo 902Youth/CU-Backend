@@ -23,10 +23,10 @@ def login():
         login_error = None
         if(email):
             user = User.query.filter_by(email=email).first()
-            login_error = 0
+            login_error = 'email'
         else:
             user = User.query.filter_by(username=username).first()
-            login_error = 1
+            login_error = 'username'
 
         if user:
             if check_password_hash(user.password, password):
@@ -36,10 +36,7 @@ def login():
             else:
                 flash('Incorrect Password, try again', category='error')
         else:
-            if login_error:
-                flash('Username invalid, try again', category='error')
-            else:
-                flash('Email invalid, try again', category='error')    
+            flash(f'Invalid {login_error}, please try again.', category='error')  
     
     return redirect(url_for('home.html'), user=current_user)
 
