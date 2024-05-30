@@ -5,6 +5,9 @@ Flask RESTful API for the Creative Unison app.
 
 ## Getting Started
 
+> [!NOTE]
+> If you have any issues starting up the project with the steps below, open up a ticket in the #tickets channel in the Discord.
+
 * Make sure you have Python installed ([View Python Installation]((https://www.python.org/downloads/release/python-3123/)))
 
 * Clone the repo 
