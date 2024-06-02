@@ -3,6 +3,8 @@ import os
 from models import *
 from db import db
 from controllers.users import users
+from controllers.endorsements import endorsements
+from controllers.jobs import jobs
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -11,6 +13,8 @@ load_dotenv()
 app = Flask(__name__)
 app.config["SQLALCHEMY_DATABASE_URI"] = os.environ["DATABASE_URL"]
 app.register_blueprint(users, url_prefix='/users')
+app.register_blueprint(endorsements, url_prefix='/endorsements')
+app.register_blueprint(jobs, url_prefix='/jobs')
 db.init_app(app)
 
 # Define a route for the root URL
