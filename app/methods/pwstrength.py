@@ -1,5 +1,7 @@
 # function for checking the strength 
 import string
+import os
+
 
 
 def get_password_strength(password):
@@ -8,8 +10,13 @@ def get_password_strength(password):
     special = sum([1 if c in string.punctuation else 0 for c in password])
     digits = sum([1 if c in string.digits else 0 for c in password])
 
-    with open('common.txt', 'r') as f:
-        common = f.read().splitlines()
+    current_directory = os.path.dirname(__file__)
+    common_file_path = os.path.join(current_directory, 'methods', 'common.txt')
+    try:
+        with open(common_file_path, 'r') as f:
+            common = f.read().splitlines()
+    except FileNotFoundError as e:
+        return e
 
     if password in common:
         return "Password was found in a common list. Please use a different password."

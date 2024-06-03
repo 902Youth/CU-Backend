@@ -1,0 +1,16 @@
+{
+    "mayank1513.trello-kanban.Workspace.filePath": ".tkb",
+    "sqltools.connections": [
+        {
+            "mysqlOptions": {
+                "authProtocol": "default",
+                "enableSsl": "Disabled"
+            },
+            "previewLimit": 50,
+            "server": "localhost",
+            "driver": "MySQL",
+            "connectString": "mysql+pymysql://administrator:7hpJ9gy6VAdi^bbY2@unison-dev-free.c38cu8kwcpn3.us-east-1.rds.amazonaws.com/unison",
+            "name": "Unison"
+        }
+    ]
+}

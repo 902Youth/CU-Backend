@@ -1,15 +1,54 @@
-from flask import Flask, session, render_template, jsonify, request, make_response, redirect, url_for, flash, Blueprint
+from flask import Flask, session, render_template, jsonify, request, make_response, redirect, url_for, flash, Blueprint, Response
 from flask_cors import CORS
 from werkzeug.security import generate_password_hash, check_password_hash
-from models import User
-from methods import pwstrength
+from models.user import User
+import datetime
+import jwt
+from functools import wraps
+from App import SECRET_KEY
+
+
+
+from methods.pwstrength import get_password_strength
+
 import db
 
+# used for the structured json reponses that are returned on successful or unsuccessful login, logout, or signup
+from methods.jsonmessages import create_sucess_response, create_error_reponse
+
+#used to establish the current state of login
 from flask_login import login_user, login_required, logout_user, current_user
 
-from App import app
 
 auth = Blueprint('auth', __name__)
+
+
+#create a jwt token function for login and sign up
+def generate_token(user_id):
+    payload = {
+        'user_id': user_id,
+        'exp': datetime.datetime.utcnow() + datetime.timedelta(days=30)
+    }
+    token = jwt.encode(payload, SECRET_KEY, algorithm='HS256')
+    return token
+
+def token_required(f):
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        token = request.args.get('token') or request.headers.get('Authorization')
+
+        if not token:
+            return jsonify({'message': 'Token is missing'}), 403
+        
+        try:
+            data = jwt.decode(token, SECRET_KEY, algorithm='HS256')
+            current_user = User.query.get(data['user_id'])
+        except Exception as e:
+            return jsonify({'message': 'Token is invalid'}), 403
+        
+        return f(current_user, *args, **kwargs)
+    return decorated
+
 
 # redirect login to home page
 @auth.route('/login', methods=['GET', 'POST'])
@@ -20,33 +59,40 @@ def login():
         password = request.form.get('password')
 
         user = None
-        login_error = None
         if(email):
             user = User.query.filter_by(email=email).first()
-            login_error = 'email'
-        else:
+        elif(username):
             user = User.query.filter_by(username=username).first()
-            login_error = 'username'
 
-        if user:
-            if check_password_hash(user.password, password):
-                flash('Login successful!', category='success')
-                login_user(user, remember=True)
-                return redirect(url_for('home.html'))
-            else:
-                flash('Incorrect Password, try again', category='error')
-        else:
-            flash(f'Invalid {login_error}, please try again.', category='error')  
-    
-    return redirect(url_for('home.html'), user=current_user)
+        if user and check_password_hash(user.password, password):
+            token = generate_token(user.id)
+            login_user(user, remember=True)
+            response = Response.objects.create({
+                'status_code': 200,
+                'status': 'success',
+                'data' : user,
+            })
+            return response
+        response = Response.objects.create({
+            'status_code': 401,
+            'status': 'unathorized',
+            'message': 'Invalid login credentials, Try again.'
+        })
+        
+        
+
+        
+    # return a json object, either error or success
+
+    #return redirect(url_for('home.html'), user=current_user)
 
 
 @auth.route('/logout')
 @login_required
 def logout():
     logout_user()
-    flash('Logout Successful', category='success')
-    return redirect(url_for('auth.login'))
+    print('Logout Successful')
+    return 
 
 
 @auth.route('/sign_up', methods=['GET', 'POST'])
@@ -65,49 +111,55 @@ def sign_up():
         if user is not None:
             user = User.query.filter_by(username=user.username).first()
         
-
+        found_in_common = False
         # check to see if all secure conditions
-        upper_case, lower_case, special, digits = pwstrength.get_password_strength(password)
+        if (get_password_strength(password) == str):
+            found_in_common = True
+        else:
+            upper_case, lower_case, special, digits = get_password_strength(password)
 
 
         # check to see if user is already in the database
         if user:
-            flash('Email already exists.', category='error')
+            print('Email already exists.')
 
         # check if emails match
         elif email != confirm_email:
-            flash('Emails do not match', category='error')
+            print('Emails do not match')
 
         # check conditions for password
         elif len(email) < 4:
-            flash('Email must be atleast 4 characters.', category='error')
+            print('Email must be atleast 4 characters.')
         
         # check the name conditions, 2 letters for first name, one for space,
         elif (fullname < 5):
-            flash('Full name must be atleast 5 characters.', category='error')
+            print('Full name must be atleast 5 characters.')
         
+        elif found_in_common:
+            print('Your password is prone to security vulnerabilities, as it was found in a common passwords database.')
+
         # check password match
         elif password != confirm_password:
-            flash('Password must match.', category='error')
+            print('Password must match.')
 
         elif password.isalpha() == True:
-            flash('Password must have atleast one number in password', category='error')
+            print('Password must have atleast one number in password')
         
         elif password.isdigit():
-            flash('Password must have atleast one number in the password', category='error')
+            print('Password must have atleast one number in the password')
 
         elif len(password) < 8:
-            flash('Password must be atleast 8 characters.', category='error')
+            print('Password must be atleast 8 characters.')
 
         #all conditions must be met for password validation
         elif upper_case == 0:
-            flash('Password must include at least one upper case character.', category='error')
+            print('Password must include at least one upper case character.')
         elif lower_case == 0:
-            flash('Password must include at least one lower case character.', category='error')
+            print('Password must include at least one lower case character.')
         elif special == 0:
-            flash('Password must contain at least one special character.', category='error')
+            print('Password must contain at least one special character.')
         elif digits == 0:
-            flash('Password must include at least one digit.', category='error')
+            print('Password must include at least one digit.')
     
 
         else:
@@ -116,8 +168,8 @@ def sign_up():
             db.session.add(new_user)
             db.session.commit()
             login_user(new_user, remember=True)
-            flash('User created successfully.', category='success')
-            redirect(url_for('view.home'))
+            print('User created successfully.')
+            return jsonify(create_sucess_response)
 
     return render_template('sign_up.html', user=current_user)
 
