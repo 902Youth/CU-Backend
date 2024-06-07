@@ -17,15 +17,16 @@ app.config["SQLALCHEMY_DATABASE_URI"] = os.environ["DATABASE_URL"]
 app.config['SECRET_KEY'] = '89f210f05f874915ad4e347ice71ce7f6454'
 CORS(app)
 
-app.register_blueprint(auth)
+
+app.register_blueprint(auth, url_prefix='/auth')
+#db.init_app(app)
 
 
-db.init_app(app)
-jwt.init_app(app)
 
 
-def welcome():
-    return "Welcome to the API!"
+
+# def welcome():
+#     return "Welcome to the API!"
 
 # Run the Flask application
 if __name__ == '__main__':

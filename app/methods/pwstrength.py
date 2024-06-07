@@ -11,7 +11,7 @@ def get_password_strength(password):
     digits = sum([1 if c in string.digits else 0 for c in password])
 
     current_directory = os.path.dirname(__file__)
-    common_file_path = os.path.join(current_directory, 'methods', 'common.txt')
+    common_file_path = os.path.join(current_directory, 'common.txt')
     try:
         with open(common_file_path, 'r') as f:
             common = f.read().splitlines()
@@ -25,4 +25,4 @@ def get_password_strength(password):
     return upper_case, lower_case, special, digits
     
 # test method call
-print(get_password_strength(''))
+# print(get_password_strength(''))
