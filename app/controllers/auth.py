@@ -1,3 +1,4 @@
+import datetime
 import uuid
 from flask import Flask, session, render_template, jsonify, request, make_response, redirect, url_for, flash, Blueprint, Response
 from flask_cors import CORS
@@ -9,6 +10,9 @@ import os
 # import datetime
 import jwt
 # from functools import wraps
+import re
+
+
 
 
 load_dotenv()
@@ -29,6 +33,7 @@ auth = Blueprint('auth', __name__)
 
 #connect to database
 
+
 db_config = {
     'user': os.getenv('DB_USER'),
     'password': os.getenv('DB_PASSWORD'),
@@ -40,15 +45,19 @@ def get_db_connection():
     return mysql.connector.connect(**db_config) 
 
 
+def generate_token(username):
+    #avoid circular import
+    from App import app
+    SECRET_KEY = app.config['SECRET_KEY']
+    payload = {
+        'user_id' : username,
+        'exp': datetime.datetime.utcnow() + datetime.timedelta(days=30),
+    }
+    token = jwt.encode(payload, SECRET_KEY, algorithm='HS256')
+    return token
 
-#create a jwt token function for login and sign up
-# def generate_token(user_id):
-#     payload = {
-#         'user_id': user_id,
-#         'exp': datetime.datetime.utcnow() + datetime.timedelta(days=30)
-#     }
-#     #token = jwt.encode(payload, auth.config['SECRET_KEY'], algorithm='HS256')
-#     #return token
+
+
 
 # def token_required(f):
 #     @wraps(f)
@@ -112,6 +121,12 @@ def get_db_connection():
 #     return response
 
 
+#function to check email validity
+def validate_email(email):
+    return bool(re.match(r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b', email))
+
+
+
 @auth.route('/sign_up', methods=['POST'])
 def sign_up():
     if request.method == 'POST':
@@ -124,23 +139,30 @@ def sign_up():
         confirm_password = request.form.get('confirmpassword')
 
 
+
+        # establish connection to database
         connection = get_db_connection()
+
+        # get the cursor for the first search term
         cursor = connection.cursor(dictionary=True)
+
+        # target the email address
         cursor.execute("SELECT * FROM user WHERE email = %s", (email,))
         existing_email = cursor.fetchone()
+
+        # target the username
         cursor.execute("SELECT * FROM user WHERE username = %s", (username,))
         existing_username = cursor.fetchone()
+
+        #target the mobile phone number
         cursor.execute("SELECT * FROM user WHERE mobile = %s", (username,))
         existing_mobile = cursor.fetchone()
+
+        #close connection
         cursor.close()
         connection.close()
 
-        if (existing_email):
-            return jsonify({'status': 'fail', 'message': 'User with email already exists'}), 400
-        if (existing_username):
-            return jsonify({'status': 'fail', 'message': 'Username already exists'}), 400
-        if (existing_mobile):
-            return jsonify({'status': 'fail', 'message': 'User with mobile number already exists'}), 400
+        
          # Perform basic validation
         if not email or not username or not password or not confirm_password:
             return jsonify({'status': 'fail', 'message': 'Missing required fields'}), 400
@@ -152,10 +174,42 @@ def sign_up():
             return jsonify({'status': 'fail', 'message': 'Passwords do not match'}), 400
         
 
+        upper_case, lower_case, special, digits, is_common= get_password_strength(password)
+        if is_common:
+            return jsonify({'status': 'fail', 'message': 'Password is too common, please try again.'}), 400
+            
+        if len(password) < 8:
+            return jsonify({'status': 'fail', 'message': 'Password must be atleast 8 characters long'}), 400
+
+        if (validate_email(email) == False):
+            return jsonify({'status': 'fail', 'message': 'Email is not valid'}), 400
+
+        if upper_case == 0:
+            return jsonify({'status': 'fail', 'message': 'Must include atleast one upper case character'}), 400
+        
+        if lower_case == 0:
+            return jsonify({'status': 'fail', 'message': 'Must include atleast one lower case character'}), 400
+        
+        if digits == 0:
+            return jsonify({'status': 'fail', 'message': 'Must include atleast one digit'}), 400
+        
+        if special == 0:
+            return jsonify({'status': 'fail', 'message': 'Must include atleast one special character eg. #'}), 400
+        
+        if (existing_email):
+            return jsonify({'status': 'fail', 'message': 'User with email already exists'}), 400
+        if (existing_username):
+            return jsonify({'status': 'fail', 'message': 'Username already exists'}), 400
+        if (existing_mobile):
+            return jsonify({'status': 'fail', 'message': 'User with mobile number already exists'}), 400
 
         # # Assuming the user is successfully created and authenticated
-        user_id = str(uuid.uuid4())  # Generating a mock user ID
-        auth_token = 'mock_jwt_token'  # This should be a real JWT token in a real app
+        new_user = User(fullname, username, email, generate_password_hash(password))
+        print(new_user.hash)  # Generating a mock user ID
+        user_id = new_user.id
+        auth_token = generate_token(user_id)
+
+        
 
         response_data = {
             'status': 'success',
@@ -197,35 +251,7 @@ def sign_up():
         # elif len(email) < 4:
         #     print('Email must be atleast 4 characters.')
         
-        # # check the name conditions, 2 letters for first name, one for space,
-        # elif (fullname < 5):
-        #     print('Full name must be atleast 5 characters.')
         
-        # elif found_in_common:
-        #     print('Your password is prone to security vulnerabilities, as it was found in a common passwords database.')
-
-        # # check password match
-        # elif password != confirm_password:
-        #     print('Password must match.')
-
-        # elif password.isalpha() == True:
-        #     print('Password must have atleast one number in password')
-        
-        # elif password.isdigit():
-        #     print('Password must have atleast one number in the password')
-
-        # elif len(password) < 8:
-        #     print('Password must be atleast 8 characters.')
-
-        # #all conditions must be met for password validation
-        # elif upper_case == 0:
-        #     print('Password must include at least one upper case character.')
-        # elif lower_case == 0:
-        #     print('Password must include at least one lower case character.')
-        # elif special == 0:
-        #     print('Password must contain at least one special character.')
-        # elif digits == 0:
-        #     print('Password must include at least one digit.')
     
 
         # else:

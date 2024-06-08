@@ -16,13 +16,15 @@ def get_password_strength(password):
         with open(common_file_path, 'r') as f:
             common = f.read().splitlines()
     except FileNotFoundError as e:
-        return e
+        return upper_case, lower_case, special, digits, False
+
 
     if password in common:
-        return "Password was found in a common list. Please use a different password."
+        return upper_case, lower_case, special, digits, True
+
     
 
-    return upper_case, lower_case, special, digits
+    return upper_case, lower_case, special, digits, False
     
 # test method call
 # print(get_password_strength(''))

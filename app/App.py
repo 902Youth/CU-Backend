@@ -14,7 +14,7 @@ from functools import wraps
 # Create a Flask application
 app = Flask(__name__)
 app.config["SQLALCHEMY_DATABASE_URI"] = os.environ["DATABASE_URL"]
-app.config['SECRET_KEY'] = '89f210f05f874915ad4e347ice71ce7f6454'
+app.config['SECRET_KEY'] = os.getenv("SECRET_KEY")
 CORS(app)
 
 
