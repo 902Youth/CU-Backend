@@ -7,16 +7,9 @@ from models.user import User
 import mysql.connector
 from dotenv import load_dotenv
 import os
-# import datetime
+import datetime
 import jwt
-# from functools import wraps
 import re
-
-
-
-
-load_dotenv()
-
 from methods.pwstrength import get_password_strength
 
 import db
@@ -28,6 +21,9 @@ from methods.jsonmessages import create_success_response, create_error_reponse
 from flask_login import login_user, login_required, logout_user, current_user
 
 
+
+
+load_dotenv()
 auth = Blueprint('auth', __name__)
 
 
@@ -155,14 +151,10 @@ def sign_up():
         existing_username = cursor.fetchone()
 
         #target the mobile phone number
-        cursor.execute("SELECT * FROM user WHERE mobile = %s", (username,))
+        cursor.execute("SELECT * FROM user WHERE mobile = %s", (mobile,))
         existing_mobile = cursor.fetchone()
-
-        #close connection
-        cursor.close()
-        connection.close()
-
         
+
          # Perform basic validation
         if not email or not username or not password or not confirm_password:
             return jsonify({'status': 'fail', 'message': 'Missing required fields'}), 400
@@ -196,6 +188,9 @@ def sign_up():
         if special == 0:
             return jsonify({'status': 'fail', 'message': 'Must include atleast one special character eg. #'}), 400
         
+        if mobile.isdigit() == False:
+            return jsonify({'status': 'fail', 'message': 'Phone number must be all numbers example: (1234567890)'}), 400
+        
         if (existing_email):
             return jsonify({'status': 'fail', 'message': 'User with email already exists'}), 400
         if (existing_username):
@@ -203,19 +198,34 @@ def sign_up():
         if (existing_mobile):
             return jsonify({'status': 'fail', 'message': 'User with mobile number already exists'}), 400
 
+
+        hashed_password = generate_password_hash(password)
         # # Assuming the user is successfully created and authenticated
-        new_user = User(fullname, username, email, generate_password_hash(password))
-        print(new_user.hash)  # Generating a mock user ID
+        new_user = User(fullname=fullname, username=username, email=email, hash=hashed_password)
+
+        # logic for inserting a new user into database
+
+        try: 
+            insert_query = "INSERT INTO `user` (id, username, mobile, email, hash, registeredAt, lastLogin, fullname) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)"
+            insert_data = (new_user.id, new_user.fullname, new_user.mobile, new_user.email, new_user.hash, new_user.registeredAt, new_user.lastLogin, new_user.fullname)
+            cursor.execute(insert_query, insert_data)
+            # Close cursor and connection
+            connection.commit()
+        except Exception as e:
+            return jsonify({'status': 'error', 'message': e}), 400
+        
+        cursor.close()
+        connection.close()
+
         user_id = new_user.id
         auth_token = generate_token(user_id)
 
-        
 
         response_data = {
             'status': 'success',
             'message': 'User successfully registered',
             'user': {
-                'id': user_id,
+                'id': new_user.id,
                 'email': email,
                 'username': username,
                 'fullname': fullname,
@@ -223,8 +233,14 @@ def sign_up():
             },
             'auth_token': auth_token
         }
+        status_code = 201
+        response = make_response(jsonify(response_data), status_code)
+        response.headers['Content-Type'] = 'application/json'
 
-        return jsonify(response_data), 201
+        login_user(new_user)
+
+        return response
+
         # check if user is currently in the database using a query search on the email
         # insert block here
         # user = User.query.filter_by(email=email).first()
