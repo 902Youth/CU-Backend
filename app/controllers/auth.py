@@ -201,13 +201,13 @@ def sign_up():
 
         hashed_password = generate_password_hash(password)
         # # Assuming the user is successfully created and authenticated
-        new_user = User(fullname=fullname, username=username, email=email, hash=hashed_password)
+        new_user = User(fullname=fullname, mobile=mobile, username=username, email=email, hash=hashed_password)
 
         # logic for inserting a new user into database
 
         try: 
             insert_query = "INSERT INTO `user` (id, username, mobile, email, hash, registeredAt, lastLogin, fullname) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)"
-            insert_data = (new_user.id, new_user.fullname, new_user.mobile, new_user.email, new_user.hash, new_user.registeredAt, new_user.lastLogin, new_user.fullname)
+            insert_data = (new_user.id, new_user.username, new_user.mobile, new_user.email, new_user.hash, new_user.registeredAt, new_user.lastLogin, new_user.fullname)
             cursor.execute(insert_query, insert_data)
             # Close cursor and connection
             connection.commit()

@@ -49,8 +49,9 @@ class User(db.Model):
     lastLogin: Mapped[str] = mapped_column(DATETIME)
 
     # Creates a User entry in the database
-    def __init__(self, fullname: str, username: str, email: str, hash: str):
+    def __init__(self, fullname: str, mobile: str,  username: str, email: str, hash: str):
         self.fullname = fullname
+        self.mobile = mobile
         self.username = username
         self.email = email
         self.hash = hash
