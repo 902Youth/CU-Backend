@@ -1,0 +1,49 @@
+{
+  "scope": "Workspace",
+  "tasks": {
+    "BYaoDQtxdM4jV5b2M7d1R": {
+      "id": "BYaoDQtxdM4jV5b2M7d1R",
+      "description": "- fix jsonify responses",
+      "columnId": "column-doing"
+    },
+    "i9Icbc0lWzZNikZH_1Ddv": {
+      "id": "i9Icbc0lWzZNikZH_1Ddv",
+      "description": "- make sure db is connected and new users and login works",
+      "columnId": "column-todo"
+    },
+    "RK_U-BCiXb4qPPgkVsEdq": {
+      "id": "RK_U-BCiXb4qPPgkVsEdq",
+      "description": "- added new file for response structure, error and success",
+      "columnId": "column-done"
+    },
+    "XjO7CoRtTzqaUfpDWUV10": {
+      "id": "XjO7CoRtTzqaUfpDWUV10",
+      "description": "- make sure user model matches the db",
+      "columnId": "column-todo"
+    }
+  },
+  "columns": [
+    {
+      "id": "column-todo",
+      "title": "To do",
+      "tasksIds": [
+        "i9Icbc0lWzZNikZH_1Ddv",
+        "XjO7CoRtTzqaUfpDWUV10"
+      ]
+    },
+    {
+      "id": "column-doing",
+      "title": "Doing",
+      "tasksIds": [
+        "BYaoDQtxdM4jV5b2M7d1R"
+      ]
+    },
+    {
+      "id": "column-done",
+      "title": "Done",
+      "tasksIds": [
+        "RK_U-BCiXb4qPPgkVsEdq"
+      ]
+    }
+  ]
+}
