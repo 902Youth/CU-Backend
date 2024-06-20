@@ -31,11 +31,12 @@
 #     def _asdict(self):
 #         return {c.name: str(getattr(self, c.name)) for c in self.__table__.columns}
 
-
+import binascii
 from sqlalchemy import BINARY, DATETIME, VARCHAR, BIGINT
 from sqlalchemy.orm import Mapped, mapped_column
 from db import db
 from datetime import datetime
+from methods.encdec import hash_password, verify_password
 
 # Defines a User model
 class User(db.Model):
@@ -44,7 +45,8 @@ class User(db.Model):
     username: Mapped[str] = mapped_column(VARCHAR(35))
     mobile: Mapped[str] = mapped_column(VARCHAR(15))
     email: Mapped[str] = mapped_column(VARCHAR(50))
-    hash: Mapped[str] = mapped_column(BINARY(60))
+    hash: Mapped[str] = mapped_column(VARCHAR(255))
+    # hash: Mapped[bytes] = mapped_column(BINARY(60))
     registeredAt: Mapped[str] = mapped_column(DATETIME)
     lastLogin: Mapped[str] = mapped_column(DATETIME)
 
@@ -54,9 +56,19 @@ class User(db.Model):
         self.mobile = mobile
         self.username = username
         self.email = email
-        self.hash = hash
+        self.hash = hash_password(hash)
         self.registeredAt = datetime.now()
 
     # Returns a dictionary representation of the User (used for JSON serialization)
     def _asdict(self):
         return {c.name: str(getattr(self, c.name)) for c in self.__table__.columns}
+    
+    
+    def verify_user(self, password: str) -> bool:
+        return verify_password(password.encode(), self.hash)
+    # def verify_password(self, password):
+    #     self.hash = self.hash.decode()
+    #     try: 
+    #         return check_password_hash(self.hash, password)
+    #     except ValueError as e:
+    #         print(f'Error: {e}')

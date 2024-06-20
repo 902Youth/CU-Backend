@@ -1,12 +1,10 @@
 import datetime
 import binascii
-
 import uuid
 from flask import Flask, session, render_template, jsonify, request, make_response, redirect, url_for, flash, Blueprint, Response
 from flask_cors import CORS
 from werkzeug.security import generate_password_hash, check_password_hash
 from models.user import User
-import mysql.connector
 from dotenv import load_dotenv
 import os
 import datetime
@@ -14,14 +12,10 @@ import jwt
 import re
 from methods.pwstrength import get_password_strength
 
-import db
-
 # used for the structured json reponses that are returned on successful or unsuccessful login, logout, or signup
 from methods.jsonmessages import create_success_response, create_error_reponse
-
 #used to establish the current state of login
 from flask_login import login_user, login_required, logout_user, current_user
-
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, scoped_session
 
@@ -35,11 +29,6 @@ DATABASE_URL = os.getenv('DATABASE_URL')
 
 engine = create_engine(DATABASE_URL, echo=False)
 Session = scoped_session(sessionmaker(bind=engine))
-
-
-
-
-#connect to database
 
 
 db_config = {
@@ -85,35 +74,59 @@ def generate_token(username):
 
 
 # redirect login to home page
-# @auth.route('/login', methods=['POST'])
-# def login():
-#     if request.method == 'POST':
-#         email = request.form.get('email')
-#         username = request.form.get('username')
-#         password = request.form.get('password')
-#         print(username, password)
-#         user = None
-#         if(email):
-#             user = User.query.filter_by(email=email).first()
-#         elif(username):
-#             user = User.query.filter_by(username=username).first()
+@auth.route('/login', methods=['POST'])
+def login():
+    if request.method == 'POST':
+        email = request.form.get('email')
+        username = request.form.get('username')
+        password = request.form.get('password')
 
-#         if user and check_password_hash(user.password, password):
-#             token = generate_token(user.id)
-#             login_user(user, remember=True)
-#             response = Response.objects.create({
-#                 'status_code': 200,
-#                 'status': 'success',
-#                 'data' : user,
-#             })
-#             return response
-#         else:
-#             response = Response.objects.create({
-#                 'status_code': 401,
-#                 'status': 'unathorized',
-#                 'message': 'Invalid login credentials, Try again.'
-#             })
-#             return response
+        session = get_db_connection()
+
+
+        print(username, password)
+        user = None
+
+        if(email):
+            user = session.query(User).filter_by(email=email).first()
+        elif(username):
+            user = session.query(User).filter_by(username=username).first()
+        print(user.username, user.fullname, user.email)
+        
+        
+        if user.verify_user(password=password):
+            try: 
+                token = generate_token(user.id)
+                #login_user(user, remember=True)
+
+                auth_token = generate_token(user.id)
+                response_data = {
+                    'status': 'success',
+                    'message': f'{user.username} successfully logged in.',
+                    'user': {
+                        'id': user.id,
+                        'email': user.email,
+                        'username': user.username,
+                        'fullname': user.fullname,
+                    },
+                    'auth_token': auth_token
+                }
+                status_code = 200
+                response = make_response(jsonify(response_data), status_code)
+                response.headers['Content-Type'] = 'application/json'
+                # try: 
+                #     user.lastLogin = datetime.datetime.now()
+                #     session.add(user)
+                #     session.commit()
+
+                #     return response, status_code
+                # except Exception as e:
+                #     return jsonify({'status': 'fail', 'message': e.message}), 400
+                return response                                                                       
+            except Exception as e:
+                return jsonify({'status': 'fail', 'message': e}), 400
+        else:
+            return jsonify({'status': 'fail', 'message': 'Incorrect password'}), 400
 
 
 # @auth.route('/logout')
@@ -149,7 +162,7 @@ def sign_up():
 
         # establish connection to database
         session = get_db_connection()
-
+        
         # get the cursor for the first search term
         #cursor = session.cursor(dictionary=True)
         try: 
@@ -219,11 +232,10 @@ def sign_up():
                 return jsonify({'status': 'fail', 'message': 'User with mobile number already exists'}), 400
 
 
-            hashed_password = generate_password_hash(password)
-            hashed_password = hashed_password.encode('utf-8')
 
+        
             # Assuming the user is successfully created and authenticated
-            new_user = User(fullname=fullname, mobile=mobile, username=username, email=email, hash=hashed_password)
+            new_user = User(fullname=fullname, mobile=mobile, username=username, email=email, hash=password)
 
             # # logic for inserting a new user into database
 
@@ -252,7 +264,7 @@ def sign_up():
             response.headers['Content-Type'] = 'application/json'
 
             # login_user(new_user)
-
+            session.close()
             return response
 
         except Exception as e:
