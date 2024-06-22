@@ -1,6 +1,6 @@
 from flask import Blueprint, request
 from db import db
-from models.users import User
+from models.user import User
 import bcrypt
 
 # Create a Blueprint for the users routes

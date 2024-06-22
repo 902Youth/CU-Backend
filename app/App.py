@@ -16,9 +16,9 @@ from functools import wraps
 # import os
 # from models import *
 # from db import db
-# from controllers.users import users
-# from controllers.endorsements import endorsements
-# from controllers.jobs import jobs
+from controllers.users import users
+from controllers.endorsements import endorsements
+from controllers.jobs import jobs
 # from dotenv import load_dotenv
 
 
@@ -33,16 +33,16 @@ CORS(app)
 
 
 app.register_blueprint(auth, url_prefix='/auth')
-#db.init_app(app)
-
-
-
-
-
-# app.register_blueprint(users, url_prefix='/users')
-# app.register_blueprint(endorsements, url_prefix='/endorsements')
-# app.register_blueprint(jobs, url_prefix='/jobs')
 # db.init_app(app)
+
+
+
+
+
+app.register_blueprint(users, url_prefix='/users')
+app.register_blueprint(endorsements, url_prefix='/endorsements')
+app.register_blueprint(jobs, url_prefix='/jobs')
+db.init_app(app)
 
 
 # def welcome():

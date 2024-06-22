@@ -24,7 +24,7 @@ def get_endorsements(source_id):
     endorsements = db.session.query(Endorsement).filter(Endorsement.source_id == source_id)
     return [endorsement._asdict() for endorsement in endorsements]
 
-@endorsements.post('/<source_id>/<target_id')
+@endorsements.post('/<source_id>/<target_id>')
 def create_endorsement(source_id, target_id):
     # Add the new endorsement to the database 
     new_endorsement = Endorsement(source_id=source_id, target_id=target_id, endorsement_post=0)
