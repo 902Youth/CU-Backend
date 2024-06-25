@@ -37,9 +37,10 @@ from sqlalchemy.orm import Mapped, mapped_column
 from db import db
 from datetime import datetime
 from methods.encdec import hash_password, verify_password
+from flask_login import UserMixin
 
 # Defines a User model
-class User(db.Model):
+class User(db.Model, UserMixin):
     id: Mapped[int] = mapped_column(BIGINT, primary_key=True)
     fullname: Mapped[str] = mapped_column(VARCHAR(50))
     username: Mapped[str] = mapped_column(VARCHAR(35))
@@ -66,9 +67,7 @@ class User(db.Model):
     
     def verify_user(self, password: str) -> bool:
         return verify_password(password.encode(), self.hash)
-    # def verify_password(self, password):
-    #     self.hash = self.hash.decode()
-    #     try: 
-    #         return check_password_hash(self.hash, password)
-    #     except ValueError as e:
-    #         print(f'Error: {e}')
+    
+    @staticmethod
+    def get_by_id(user_id):
+        return User.query.get(int(user_id))

@@ -1,9 +1,5 @@
 import datetime
-import binascii
-import uuid
 from flask import Flask, session, render_template, jsonify, request, make_response, redirect, url_for, flash, Blueprint, Response
-from flask_cors import CORS
-from werkzeug.security import generate_password_hash, check_password_hash
 from models.user import User
 from dotenv import load_dotenv
 import os
@@ -12,12 +8,14 @@ import jwt
 import re
 from methods.pwstrength import get_password_strength
 
-# used for the structured json reponses that are returned on successful or unsuccessful login, logout, or signup
-from methods.jsonmessages import create_success_response, create_error_reponse
 #used to establish the current state of login
 from flask_login import login_user, login_required, logout_user, current_user
 from sqlalchemy import create_engine
+
 from sqlalchemy.orm import sessionmaker, scoped_session
+from sqlalchemy.exc import SQLAlchemyError
+
+from functools import wraps
 
 
 
@@ -55,22 +53,34 @@ def generate_token(username):
 
 
 
-# def token_required(f):
-#     @wraps(f)
-#     def decorated(*args, **kwargs):
-#         token = request.args.get('token') or request.headers.get('Authorization')
+def token_required(f):
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        from App import app
+        token = None
+        if 'Authorization' in request.headers:
+            token = request.headers['Authorization']
+            if token.startswith('Bearer '):
+                token = token[len('Bearer '):]
+        elif 'token' in request.args:
+            token = request.args.get('token')
 
-#         if not token:
-#             return jsonify({'message': 'Token is missing'}), 403
+        if not token:
+            return jsonify({'message': 'Token is missing'}), 403
+
+        try:
+            print(f"Token received: {token}")  # Debug statement
+            data = jwt.decode(token, app.config['SECRET_KEY'], algorithms=['HS256'])
+            print(f"Decoded data: {data}")  # Debug statement
+            current_user = get_current_user(data['user_id'], get_db_connection())
+        except jwt.ExpiredSignatureError:
+            return jsonify({'message': 'Token has expired'}), 403
+        except jwt.InvalidTokenError:
+            return jsonify({'message': 'Token is invalid'}), 403
         
-#         try:
-#             data = jwt.decode(token, auth.config['SECRET_KEY'], algorithm='HS256')
-#             current_user = User.query.get(data['user_id'])
-#         except Exception as e:
-#             return jsonify({'message': 'Token is invalid'}), 403
-        
-#         return f(current_user, *args, **kwargs)
-#     return decorated
+        return f(current_user, *args, **kwargs)
+    return decorated
+
 
 
 # redirect login to home page
@@ -83,22 +93,15 @@ def login():
 
         session = get_db_connection()
 
-
-        print(username, password)
         user = None
-
         if(email):
             user = session.query(User).filter_by(email=email).first()
         elif(username):
-            user = session.query(User).filter_by(username=username).first()
-        print(user.username, user.fullname, user.email)
-        
+            user = session.query(User).filter_by(username=username).first()        
         
         if user.verify_user(password=password):
             try: 
-                token = generate_token(user.id)
-                #login_user(user, remember=True)
-
+                
                 auth_token = generate_token(user.id)
                 response_data = {
                     'status': 'success',
@@ -114,37 +117,43 @@ def login():
                 status_code = 200
                 response = make_response(jsonify(response_data), status_code)
                 response.headers['Content-Type'] = 'application/json'
-                # try: 
-                #     user.lastLogin = datetime.datetime.now()
-                #     session.add(user)
-                #     session.commit()
+                login_user(user, remember=True)
+                print(user.lastLogin)
+                try: 
+                    user.lastLogin = datetime.datetime.now()
+                    session.add(user)
+                    session.commit()
 
-                #     return response, status_code
-                # except Exception as e:
-                #     return jsonify({'status': 'fail', 'message': e.message}), 400
-                return response                                                                       
+                    return response, status_code
+                except Exception as e:
+                    session.rollback()
+                    return jsonify({'status': 'fail', 'message': e}), 400
             except Exception as e:
                 return jsonify({'status': 'fail', 'message': e}), 400
         else:
             return jsonify({'status': 'fail', 'message': 'Incorrect password'}), 400
 
 
-# @auth.route('/logout')
-# @login_required
-# def logout():
-#     logout_user()
-#     response = Response.objects.create({
-#         'status_code' : 200,
-#         'status' : 'successful',
-#         'message' : 'Logged out successfully',
-#     })
-#     return response
+@auth.route('/logout', methods=['POST'])
+@login_required
+def logout():
+    try:
+        logout_user()
+        response_data = {
+            'status_code': 200,
+            'status': 'successful',
+            'message': 'Logged out successfully'
+        }   
+        response = make_response(jsonify(response_data), 200)
+        response.headers['Content-Type'] = 'application/json'
+        return response
+    except Exception as e:
+        return jsonify({'status':'fail', 'message': e}), 400
 
 
 #function to check email validity
 def validate_email(email):
     return bool(re.match(r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b', email))
-
 
 
 @auth.route('/sign_up', methods=['POST'])
@@ -159,31 +168,15 @@ def sign_up():
         confirm_password = request.form.get('confirmpassword')
 
 
-
         # establish connection to database
         session = get_db_connection()
         
         # get the cursor for the first search term
-        #cursor = session.cursor(dictionary=True)
         try: 
         # target the email address
-            existing_email = session.query(User).filter_by(email=email).first()
+            existing_email = session.query(User).filter_by(email=email).first() 
             existing_username = session.query(User).filter_by(username=username).first()
             existing_mobile = session.query(User).filter_by(mobile=mobile).first()
-
-
-            print(existing_email, existing_username, existing_mobile)
-
-
-            # cursor.execute("SELECT * FROM user WHERE email = %s", (email,))
-            # existing_email = cursor.fetchone()
-            # target the username
-            # cursor.execute("SELECT * FROM user WHERE username = %s", (username,))
-            # existing_username = cursor.fetchone()
-            # target the mobile phone number
-            # cursor.execute("SELECT * FROM user WHERE mobile = %s", (mobile,))
-            # existing_mobile = cursor.fetchone()
-    
 
             # Perform basic validation
             if not email or not username or not password or not confirm_password:
@@ -195,7 +188,6 @@ def sign_up():
             if password != confirm_password:
                 return jsonify({'status': 'fail', 'message': 'Passwords do not match'}), 400
             
-
             upper_case, lower_case, special, digits, is_common= get_password_strength(password)
             if is_common:
                 return jsonify({'status': 'fail', 'message': 'Password is too common, please try again.'}), 400
@@ -232,20 +224,14 @@ def sign_up():
                 return jsonify({'status': 'fail', 'message': 'User with mobile number already exists'}), 400
 
 
-
-        
             # Assuming the user is successfully created and authenticated
             new_user = User(fullname=fullname, mobile=mobile, username=username, email=email, hash=password)
 
             # # logic for inserting a new user into database
-
-        
             session.add(new_user)
             session.commit()
 
-            user_id = new_user.id
-            auth_token = generate_token(user_id)
-
+            auth_token = generate_token(new_user.id)
 
             response_data = {
                 'status': 'success',
@@ -269,48 +255,40 @@ def sign_up():
 
         except Exception as e:
             return jsonify({'status': 'error', 'message': e}), 400
-        
-        # cursor.close()
-        # connection.close()
-
-        
-
-        # check if user is currently in the database using a query search on the email
-        # insert block here
-        # user = User.query.filter_by(email=email).first()
-        # if user is not None:
-        #     user = User.query.filter_by(username=user.username).first()
-        
-        # found_in_common = False
-        # # check to see if all secure conditions
-        # if (get_password_strength(password) == str):
-        #     found_in_common = True
-        # else:
-        #     upper_case, lower_case, special, digits = get_password_strength(password)
 
 
-        # # check to see if user is already in the database
-        # if user:
-        #     print('Email already exists.')
 
-        # # check if emails match
-        # elif email != confirm_email:
-        #     print('Emails do not match')
-
-        # # check conditions for password
-        # elif len(email) < 4:
-        #     print('Email must be atleast 4 characters.')
-        
-        
+#functions for deleting user
+def get_current_user(user_id, session):
+    try:
+        user = session.query(User).filter(User.id == user_id).first()
+        return user
+    except Exception as e:
+        print(f"Error retrieving user: {e}")
+        return None
     
 
-        # else:
-        #     #create new user
-        #     new_user = User(email=email, username=username, fullname=fullname, password=generate_password_hash(password, 'sha256'))
-        #     db.session.add(new_user)
-        #     db.session.commit()
-        #     login_user(new_user, remember=True)
-        #     print('User created successfully.')
-        #     return jsonify(create_success_response)
 
+@auth.route('/remove_user/<int:user_id>', methods=['POST'])
+@token_required
+@login_required
+def delete_user(current_user, user_id):
+    try:
+        session = get_db_connection()
 
+        user = get_current_user(user_id, session)
+        if user is None:
+            return jsonify({'status': 'fail', 'message': 'No user found'}), 400
+        session.delete(user)
+        session.commit()
+        session.close()
+        return jsonify({'status': 'success', 'message': 'User was successfully deleted'}, 201)
+    except SQLAlchemyError as e:
+        session.rollback()
+        print(f"Database error: {e}")  # Detailed database error
+        return jsonify({'status': 'fail', 'message': 'An error occurred while deleting the user.'}), 500
+    except Exception as e:
+        print(f"General error: {e}")  # General error
+        return jsonify({'status': 'fail', 'message': 'An error occurred while deleting the user.'}), 500
+    finally:
+        session.close()

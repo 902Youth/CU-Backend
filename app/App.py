@@ -5,11 +5,13 @@ from dotenv import load_dotenv
 import os
 from db import db
 from controllers.auth import auth
-load_dotenv() # Loads environment variables from .env file
+#load_dotenv() # Loads environment variables from .env file
 
 import jwt
 from datetime import datetime, timedelta
 from functools import wraps
+from flask_login import LoginManager
+from models.user import User
 
 
 # from flask import Flask
@@ -29,6 +31,16 @@ app = Flask(__name__)
 app.config["SQLALCHEMY_DATABASE_URI"] = os.environ["DATABASE_URL"]
 
 app.config['SECRET_KEY'] = os.getenv("SECRET_KEY")
+
+
+login_manager = LoginManager()
+login_manager.init_app(app)
+
+@login_manager.user_loader
+def load_user(user_id):
+    return User.get_by_id(user_id)
+
+
 CORS(app)
 
 
@@ -42,7 +54,7 @@ app.register_blueprint(auth, url_prefix='/auth')
 # app.register_blueprint(users, url_prefix='/users')
 # app.register_blueprint(endorsements, url_prefix='/endorsements')
 # app.register_blueprint(jobs, url_prefix='/jobs')
-# db.init_app(app)
+db.init_app(app)
 
 
 # def welcome():
