@@ -26,8 +26,27 @@ def get_endorsements(source_id):
 
 @endorsements.post('/<source_id>/<target_id>')
 def create_endorsement(source_id, target_id):
+    body = request.json
+
     # Add the new endorsement to the database 
-    new_endorsement = Endorsement(source_id=source_id, target_id=target_id, endorsement_post=0)
+    new_endorsement = Endorsement(
+        source_id=source_id,
+        target_id=target_id,
+        endorsement_post=1,
+        recipient_name=body['recipient']['name'],
+        recipient_username=body['recipient']['username'],
+        recipient_profile_pic=body['recipient']['recipient_profile_pic'],
+        recipient_profile_url=body['recipient']['recipient_profile_url'],
+        endorser_name=body['endorser']['name'],
+        endorser_username=body['endorser']['username'],
+        endorser_profile_pic=body['endorser']['endorser_profile_pic'],
+        endorser_profile_url=body['endorser']['endorser_profile_url'],
+        timestamp=datetime.strptime(body['timestamp'], "%Y-%m-%dT%H:%M:%SZ"),
+        message=body['message'],
+        likes=body.get('likes', 0),
+        comments=body.get('comments', 0)
+    )
+    
     db.session.add(new_endorsement)
     db.session.commit()
     
