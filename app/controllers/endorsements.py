@@ -50,7 +50,7 @@ def create_endorsement(source_id, target_id):
     db.session.add(new_endorsement)
     db.session.commit()
     
-    return "Endorsement created"
+    return {"message": "Endorsement created", "endorsement": new_endorsement._asdict()}, 201
 
 @endorsements.put('/<id>')
 def update_endorsement(id):
