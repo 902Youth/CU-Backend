@@ -49,6 +49,20 @@ class User(db.Model):
     # hash: Mapped[bytes] = mapped_column(BINARY(60))
     registeredAt: Mapped[str] = mapped_column(DATETIME)
     lastLogin: Mapped[str] = mapped_column(DATETIME)
+    
+    # Profile picture fields
+    pfp_id: Mapped[int] = mapped_column(BIGINT, nullable=True, autoincrement=True)
+    pfp_name: Mapped[str] = mapped_column(VARCHAR(255), nullable=True)
+    pfp_last_modified: Mapped[int] = mapped_column(BIGINT, nullable=True)
+    pfp_size: Mapped[int] = mapped_column(nullable=True)
+    pfp_type: Mapped[str] = mapped_column(VARCHAR(50), nullable=True)
+
+    # Background picture fields
+    bg_pic_id: Mapped[int] = mapped_column(BIGINT, nullable=True, autoincrement=True)
+    bg_pic_name: Mapped[str] = mapped_column(VARCHAR(255), nullable=True)
+    bg_pic_last_modified: Mapped[int] = mapped_column(BIGINT, nullable=True)
+    bg_pic_size: Mapped[int] = mapped_column(nullable=True)
+    bg_pic_type: Mapped[str] = mapped_column(VARCHAR(50), nullable=True)
 
     # Creates a User entry in the database
     def __init__(self, fullname: str, mobile: str,  username: str, email: str, hash: str):
