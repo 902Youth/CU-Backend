@@ -5,6 +5,7 @@ from dotenv import load_dotenv
 import os
 from db import db
 from controllers.auth import auth
+from controllers.notifications import notifications
 #load_dotenv() # Loads environment variables from .env file
 
 import jwt
@@ -45,6 +46,7 @@ CORS(app)
 
 
 app.register_blueprint(auth, url_prefix='/auth')
+app.register_blueprint(notifications, url_prefix='/notifications')
 #db.init_app(app)
 
 
